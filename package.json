@@ -1,0 +1,17 @@
+{
+  "name": "temporal-publish-sample",
+  "version": "1.0.0",
+  "description": "A sample project demonstrating two methods for coordinating Temporal workflows. Uses the example of publishing of restaurant menus to model a problem that requires coordination.",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nils Lundquist",
+  "license": "ISC",
+  "dependencies": {
+    "@temporalio/client": "^1.8.1"
+  },
+  "devDependencies": {
+    "@bitovi/eslint-config": "^1.6.0"
+  }
+}

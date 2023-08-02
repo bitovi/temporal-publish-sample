@@ -1,0 +1,12 @@
+{
+  "extends": [
+    "@bitovi/eslint-config/node",
+    "@bitovi/eslint-config/typescript"
+  ],
+  "parserOptions": {
+    "project": "tsconfig.json"
+  },
+  "ignorePatterns": [
+    "build/**/*.js"
+  ]
+}
