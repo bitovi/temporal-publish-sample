@@ -9,10 +9,10 @@ import {
   proxyActivities,
   executeChild
 } from '@temporalio/workflow'
-import { MAX_WORKFLOW_HISTORY_LENGTH, MAX_WORKFLOW_IDLE_MS } from '../config'
+import { DEFAULT_ACTIVITY_OPTIONS, MAX_WORKFLOW_HISTORY_LENGTH, MAX_WORKFLOW_IDLE_MS } from '../config'
 import type CommonPublishActivities from '../common/activities'
-import type PublishMenuLockingActivities from './activities'
-import { PUBLISH_LOCKING_QUEUE } from '../queues'
+import type PublishMenuQueuedSignalActivities from './activities'
+import { PUBLISH_QUEUED_SIGNAL_QUEUE } from '../queues'
 
 export type LockRequest = {
   initiatorId: string
@@ -33,12 +33,12 @@ const {
   updateActiveMenu,
   saveMenu,
   sendPublishedEvent
-} = proxyActivities<typeof CommonPublishActivities>({})
+} = proxyActivities<typeof CommonPublishActivities>(DEFAULT_ACTIVITY_OPTIONS)
 
 const {
   sendLockRequestSignal,
   sendLockReleaseSignal
-} = proxyActivities<typeof PublishMenuLockingActivities>({})
+} = proxyActivities<typeof PublishMenuQueuedSignalActivities>(DEFAULT_ACTIVITY_OPTIONS)
 
 export async function lock(requests: LockRequest[] = []): Promise<void> {
   setHandler(lockRequestSignal, (req) => { requests.push(req) })
@@ -71,10 +71,11 @@ export async function lock(requests: LockRequest[] = []): Promise<void> {
 
 export async function publishMenuToStore(menuId: string, storeId: string) {
   const resourceId = `${storeId}:publish`
+  const workflowId = workflowInfo().workflowId
   let lockReleaseSignal: string | undefined
 
   setHandler(lockAcquiredSignal, ({ releaseSignalName }) => { lockReleaseSignal = releaseSignalName})
-  await sendLockRequestSignal(resourceId)
+  await sendLockRequestSignal(workflowId, resourceId)
 
   // wait for the lock to be acquired[
   await condition(() => lockReleaseSignal !== undefined)
@@ -91,16 +92,16 @@ export async function publishMenuToStore(menuId: string, storeId: string) {
   }
 }
 
-export async function publishMenuWithLocking(menuId: string) {
+export async function publishMenuWithQueuedSignal(menuId: string) {
   const [tempMenuId, stores] = await Promise.all([
     aggregateMenuContents(menuId),
     findStoresUsingMenu(menuId)
   ])
   const idSalt = Array.from(Array(5), () => Math.floor(Math.random() * 36).toString(36)).join('');
   await Promise.all(stores.map((storeId) => executeChild(publishMenuToStore, {
-    taskQueue: PUBLISH_LOCKING_QUEUE,
+    taskQueue: PUBLISH_QUEUED_SIGNAL_QUEUE,
     workflowId: `publishMenuToStore:${menuId}:${storeId}:${idSalt}`,
-    args: [menuId, storeId]
+    args: [tempMenuId, storeId]
   })))
   await deleteTemporaryMenu(tempMenuId)
 }

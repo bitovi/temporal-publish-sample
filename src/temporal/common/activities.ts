@@ -1,3 +1,4 @@
+import { Writable } from 'node:stream'
 import { v4 as uuid } from 'uuid'
 import { clone } from 'lodash'
 
@@ -25,7 +26,13 @@ type Event = {
 const temporaryMenuStore: Map<string, MenuContents> = new Map()
 const permanentMenuStore: Map<string, MenuContents> = new Map()
 const activeMenuStore: Map<string, string> = new Map()
-const eventStream: WritableStream<Event> = new WritableStream<Event>()
+let _eventStream: Writable
+function getEventStream() {
+  if (_eventStream === undefined) _eventStream = new Writable({
+    write(_chunk, _encoding, _callback) { _callback() }
+  })
+  return _eventStream
+}
 
 export default {
   // takes a menu identifier, builds a menu, saves the menu to a temporary location, returns temporary menu contents id
@@ -84,11 +91,19 @@ export default {
   },
 
   async sendPublishedEvent(permanentMenuId: string, storeId: string) {
-    await eventStream.getWriter().write({
+    const published: Event = {
       type: EventType.PUBLISHED,
       body: {
         storeId,
         menuId: permanentMenuId
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      try {
+        getEventStream().write(JSON.stringify(published), resolve)
+      } catch (e) {
+        reject(e)
       }
     })
   }

@@ -2,11 +2,14 @@ services:
   postgres:
     container_name: tps-postgres
     image: postgres:latest
+    restart: always
     environment:
       - POSTGRES_PASSWORD=postgres
 
   temporal:
     container_name: tps-temporal
+    image: temporalio/auto-setup:1.21.3.0
+    restart: always
     depends_on:
       - postgres
     environment:
@@ -15,25 +18,26 @@ services:
       - POSTGRES_SEEDS=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PWD=postgres
-    image: temporalio/auto-setup:1.21.3.0
     ports:
-      - 7233
+      - 7233:7233
 
-  temporal-admin-tools:
-    container_name: tps-temporal-admin-tools
+  worker:
+    container_name: tps-worker
+    build: ./
+    restart: always
     depends_on:
       - temporal
     environment:
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:1.21.3.0
+      - TEMPORAL_ADDRESS=temporal:7233
 
   temporal-web:
     container_name: tps-temporal-web
+    image: temporalio/ui:2.16.2
+    restart: always
     depends_on:
       - temporal
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-    image: temporalio/ui:2.16.2
     ports:
-      - 8080
+      - 8080:8080

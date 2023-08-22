@@ -1,18 +1,17 @@
-import { PUBLISH_LOCKING_QUEUE } from '../queues'
-import { workflowInfo } from '@temporalio/workflow'
+import { PUBLISH_QUEUED_SIGNAL_QUEUE } from '../queues'
 import { lock, lockRequestSignal } from './workflows'
 import { getClient } from '../client'
 
 export default {
-  async sendLockRequestSignal(resourceId: string) {
+  async sendLockRequestSignal(initiatorId: string, resourceId: string) {
     const client = await getClient()
     await client.workflow.signalWithStart(lock, {
-      taskQueue: PUBLISH_LOCKING_QUEUE,
+      taskQueue: PUBLISH_QUEUED_SIGNAL_QUEUE,
       workflowId: `lock:${resourceId}`,
       signal: lockRequestSignal,
       args: [],
       signalArgs: [{
-        initiatorId: workflowInfo().workflowId,
+        initiatorId,
         timeoutMs: 24 * 60 * 60 * 1000 // 1 day
       }]
     })
